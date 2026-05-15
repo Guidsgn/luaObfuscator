@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LuaShield Obfuscator v2</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="wrap" id="root">
+
+  <!-- ═══════════════════════════════════════════════════
+       TOPBAR
+  ═══════════════════════════════════════════════════ -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon">🔐</div>
+      <div>
+        <span class="brand-name">LuaShield Obfuscator</span>
+        <span class="brand-sub">Lua · FiveM · v2</span>
+      </div>
+      <span class="pill pill-blue">Lua</span>
+      <span class="pill pill-purple">FiveM</span>
+    </div>
+    <div class="topbar-right">
+      <span id="session-key-display" class="pill pill-amber" style="display:none; font-family:monospace;"></span>
+      <div class="theme-btn" onclick="toggleTheme()" role="button" aria-label="Alternar tema">
+        <span id="t-icon">🌙</span>
+        <span id="t-lbl">Dark</span>
+        <div class="toggle-track on" id="t-track"><div class="toggle-knob"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       NAVEGAÇÃO
+  ═══════════════════════════════════════════════════ -->
+  <nav class="nav" role="tablist" aria-label="Abas principais">
+    <button class="nav-btn active" onclick="goTab('ofuscar',this)"   role="tab" aria-selected="true">
+      <span class="nav-icon">🔒</span>Ofuscar
+    </button>
+    <button class="nav-btn" onclick="goTab('deofuscar',this)"        role="tab">
+      <span class="nav-icon">🔓</span>Deofuscar
+    </button>
+    <button class="nav-btn" onclick="goTab('cruzar',this)"           role="tab">
+      <span class="nav-icon">⚡</span>Cruzar
+    </button>
+    <button class="nav-btn" onclick="goTab('brute',this)"            role="tab">
+      <span class="nav-icon">🔑</span>Brute Force
+    </button>
+    <button class="nav-btn" onclick="goTab('ajuda',this)"            role="tab">
+      <span class="nav-icon">❓</span>Ajuda
+    </button>
+  </nav>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       ABA: OFUSCAR
+  ═══════════════════════════════════════════════════ -->
+  <div id="tab-ofuscar" class="tab-panel">
+
+    <!-- Opções de proteção -->
+    <div class="panel">
+      <div class="panel-title">
+        <div class="panel-title-left">⚙️ Passo 1 — camadas de proteção</div>
+      </div>
+      <div class="opt-grid">
+        <div class="opt-card on" id="op-pcall" onclick="tog('pcall','op-pcall')" title="Envolve o código em pcall para capturar erros em runtime">
+          <div class="opt-icon">🛡️</div>
+          <div class="opt-label">Proteção pcall</div>
+        </div>
+        <div class="opt-card on" id="op-junk" onclick="tog('junk','op-junk')" title="Insere instruções falsas para dificultar a leitura">
+          <div class="opt-icon">🗑️</div>
+          <div class="opt-label">Código falso</div>
+        </div>
+        <div class="opt-card on" id="op-header" onclick="tog('header','op-header')" title="Adiciona comentário de cabeçalho falso">
+          <div class="opt-icon">📄</div>
+          <div class="opt-label">Header falso</div>
+        </div>
+      </div>
+
+      <!-- Chaves -->
+      <div class="keys">
+        <span>🗝️</span>
+        <span class="key-lbl">XOR</span>
+        <input class="key-inp" type="number" id="xor" value="42" min="1" max="255" oninput="updateStrength()">
+        <span class="key-lbl">Shift</span>
+        <input class="key-inp" type="number" id="shift" value="2" min="1" max="20" oninput="updateStrength()">
+        <button class="btn" style="flex:0;padding:5px 12px;" onclick="randKeys()">🎲 Aleatório</button>
+        <div class="key-strength" id="strength-bars" title="Força das chaves">
+          <div class="strength-bar" id="sb1"></div>
+          <div class="strength-bar" id="sb2"></div>
+          <div class="strength-bar" id="sb3"></div>
+        </div>
+        <span class="key-hint" id="key-hint-save"></span>
+      </div>
+
+      <!-- Input -->
+      <div class="panel-title" style="margin-top:4px;">
+        <div class="panel-title-left">📋 Passo 2 — cole o código Lua</div>
+        <span id="in-info" class="char-count" style="font-size:10px;color:var(--tx3);text-transform:none;letter-spacing:0;">0 chars · 0 linhas</span>
+      </div>
+      <textarea id="in" placeholder="Cole seu código Lua / FiveM aqui..." style="height:140px;" oninput="updIn()"></textarea>
+
+      <div class="btns">
+        <button class="btn btn-blue"  onclick="obf()">🔒 Ofuscar agora</button>
+        <button class="btn btn-green" onclick="cp('out')">📋 Copiar saída</button>
+        <button class="btn"           onclick="dl('out','protegido.lua')">💾 Baixar .lua</button>
+        <button class="btn btn-red"   onclick="clrObf()">🗑️ Limpar</button>
+      </div>
+    </div>
+
+    <!-- Output -->
+    <div class="panel">
+      <div class="panel-title">
+        <div class="panel-title-left">✅ Passo 3 — código protegido</div>
+        <span id="out-info" style="font-size:10px;color:var(--tx3);text-transform:none;letter-spacing:0;"></span>
+      </div>
+      <textarea id="out" readonly style="height:140px;" placeholder="O resultado aparece aqui..."></textarea>
+      <div class="stats-row" id="stats" style="display:none;">
+        <div class="stat-box"><div class="stat-val" id="s1">—</div><div class="stat-lbl">📦 bytes entrada</div></div>
+        <div class="stat-box"><div class="stat-val" id="s2">—</div><div class="stat-lbl">📤 bytes saída</div></div>
+        <div class="stat-box"><div class="stat-val" id="s3">—</div><div class="stat-lbl">📈 fator</div></div>
+        <div class="stat-box"><div class="stat-val" id="s4">—</div><div class="stat-lbl">📝 linhas</div></div>
+      </div>
+    </div>
+
+    <!-- Histórico da sessão -->
+    <div class="panel" id="history-panel" style="display:none;">
+      <div class="panel-title">
+        <div class="panel-title-left">🕘 Histórico da sessão</div>
+        <button class="btn btn-red" style="flex:0;padding:3px 10px;font-size:10px;" onclick="clearHistory()">Limpar</button>
+      </div>
+      <div class="history-list" id="history-list"></div>
+    </div>
+
+  </div><!-- /tab-ofuscar -->
+
+
+  <!-- ═══════════════════════════════════════════════════
+       ABA: DEOFUSCAR
+  ═══════════════════════════════════════════════════ -->
+  <div id="tab-deofuscar" class="tab-panel" style="display:none;">
+
+    <div class="panel">
+      <div class="note note-blue">
+        <span class="note-icon">🔑</span>
+        <span class="note-text">Informe as mesmas chaves usadas na ofuscação. Se não souber, use <b>🔑 Brute Force</b> para descobrir automaticamente.</span>
+      </div>
+      <div class="keys">
+        <span>🗝️</span>
+        <span class="key-lbl">XOR</span>
+        <input class="key-inp" type="number" id="dxor" value="42" min="1" max="255">
+        <span class="key-lbl">Shift</span>
+        <input class="key-inp" type="number" id="dshift" value="2" min="1" max="20">
+        <span class="key-hint" id="dkey-hint" style="color:var(--grn);"></span>
+      </div>
+      <div class="panel-title"><div class="panel-title-left">📥 Cole o código ofuscado</div></div>
+      <textarea id="din" placeholder="Cole o código ofuscado aqui..." style="height:150px;"></textarea>
+      <div class="btns">
+        <button class="btn btn-blue"  onclick="deobf('din','dout','dxor','dshift','dstatus')">🔓 Deofuscar</button>
+        <button class="btn btn-green" onclick="cp('dout')">📋 Copiar</button>
+        <button class="btn"           onclick="dl('dout','deofuscado.lua')">💾 Baixar .lua</button>
+        <button class="btn btn-red"   onclick="document.getElementById('din').value='';document.getElementById('dout').value='';toast('🗑️ Limpo','ok')">🗑️ Limpar</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">
+        <div class="panel-title-left">✅ Código recuperado</div>
+        <span id="dstatus" style="font-size:10px;color:var(--grn);text-transform:none;letter-spacing:0;"></span>
+      </div>
+      <textarea id="dout" readonly style="height:150px;" placeholder="O original aparece aqui..."></textarea>
+    </div>
+
+  </div><!-- /tab-deofuscar -->
+
+
+  <!-- ═══════════════════════════════════════════════════
+       ABA: CRUZAR
+  ═══════════════════════════════════════════════════ -->
+  <div id="tab-cruzar" class="tab-panel" style="display:none;">
+
+    <div class="note note-purple">
+      <span class="note-icon">⚡</span>
+      <span class="note-text">Detecta eventos, exports e callbacks compartilhados entre front e back — mesmo com um deles ofuscado. Use para mapear a comunicação do script.</span>
+    </div>
+
+    <div class="stabs">
+      <button class="stab active" onclick="goStab('cr-normal',this)">🖥️ Back aberto + Front ofuscado</button>
+      <button class="stab"        onclick="goStab('cr-reverso',this)">🔄 Front aberto + Back ofuscado</button>
+    </div>
+
+    <!-- ─── MODO NORMAL ─── -->
+    <div id="cr-normal">
+      <div class="guide">
+        <div class="guide-title">📖 Como usar</div>
+        <div class="guide-steps">
+          <div class="step"><div class="step-num">1</div><div class="step-text">Cole o <b>server.lua aberto</b> no campo da esquerda</div></div>
+          <div class="step"><div class="step-num">2</div><div class="step-text">Cole o <b>client.lua ofuscado</b> no campo da direita com as chaves (se souber)</div></div>
+          <div class="step"><div class="step-num">3</div><div class="step-text">Clique em <b>⚡ Analisar e cruzar</b> para ver os eventos em comum</div></div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="cross-card">
+          <div class="panel-title">
+            <div class="panel-title-left">🖥️ Back-end aberto (server.lua)</div>
+            <span class="pill pill-green" style="font-size:9px;">✅ OPEN</span>
+          </div>
+          <textarea id="cr-back" placeholder="Cole o server.lua aberto aqui...&#10;&#10;Extrai automaticamente:&#10;📡 RegisterNetEvent / AddEventHandler&#10;📤 TriggerClientEvent&#10;📦 exports[...]&#10;🔁 Callbacks QBCore / ESX&#10;🗄️ Queries MySQL"></textarea>
+        </div>
+        <div class="cross-card">
+          <div class="panel-title">
+            <div class="panel-title-left">📱 Front-end ofuscado (client.lua)</div>
+            <span class="pill pill-blue" style="font-size:9px;">🔒 OBF</span>
+          </div>
+          <div class="keys" style="padding:6px 10px; margin-bottom:0;">
+            <span>🗝️</span>
+            <span class="key-lbl">XOR</span>
+            <input class="key-inp" type="number" id="cr-xor" value="42">
+            <span class="key-lbl">Shift</span>
+            <input class="key-inp" type="number" id="cr-shift" value="2">
+          </div>
+          <textarea id="cr-front" placeholder="Cole o client.lua ofuscado aqui..."></textarea>
+        </div>
+      </div>
+
+      <div class="btns" style="margin-top:10px;">
+        <button class="btn btn-purple" onclick="analisar()">⚡ Analisar e cruzar</button>
+        <button class="btn btn-blue"   onclick="deobfFront()">🔓 Deofuscar front</button>
+        <button class="btn btn-green"  onclick="cp('cr-relatorio')">📋 Copiar relatório</button>
+        <button class="btn"            onclick="dl('cr-relatorio','analise.txt')">💾 Baixar</button>
+      </div>
+
+      <div class="panel" style="margin-top:10px;">
+        <div class="panel-title"><div class="panel-title-left">📊 Resultado da análise</div></div>
+        <div class="stabs" id="res-stabs">
+          <button class="stab active" onclick="goStab2('res-rel',this)">📋 Relatório</button>
+          <button class="stab"        onclick="goStab2('res-ev',this)">📡 Eventos</button>
+          <button class="stab"        onclick="goStab2('res-deobf',this)">🔓 Front deofuscado</button>
+        </div>
+        <div id="res-rel">
+          <textarea id="cr-relatorio" readonly style="height:170px;" placeholder="Analise primeiro..."></textarea>
+        </div>
+        <div id="res-ev" style="display:none;">
+          <div class="result-list" id="ev-lista">
+            <div class="empty-state">⏳ Analise primeiro</div>
+          </div>
+        </div>
+        <div id="res-deobf" style="display:none;">
+          <textarea id="cr-deobf-out" readonly style="height:170px;" placeholder="Deofuscação não tentada ainda..."></textarea>
+        </div>
+      </div>
+    </div><!-- /cr-normal -->
+
+    <!-- ─── MODO REVERSO ─── -->
+    <div id="cr-reverso" style="display:none;">
+      <div class="guide">
+        <div class="guide-title">🔄 Modo reverso — front aberto + back ofuscado</div>
+        <div class="guide-steps">
+          <div class="step"><div class="step-num">1</div><div class="step-text">Cole o <b>client.lua aberto</b> no campo da esquerda</div></div>
+          <div class="step"><div class="step-num">2</div><div class="step-text">Cole o <b>server.lua ofuscado</b> no campo da direita com as chaves</div></div>
+          <div class="step"><div class="step-num">3</div><div class="step-text">O sistema cruza <b>TriggerServerEvent</b> do front com os eventos do back</div></div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="cross-card">
+          <div class="panel-title">
+            <div class="panel-title-left">📱 Front-end aberto (client.lua)</div>
+            <span class="pill pill-green" style="font-size:9px;">✅ OPEN</span>
+          </div>
+          <textarea id="rv-front" placeholder="Cole o client.lua aberto aqui...&#10;&#10;Extrai automaticamente:&#10;📡 TriggerServerEvent&#10;🔁 TriggerEvent&#10;📦 exports[...]&#10;💬 SendNUIMessage"></textarea>
+        </div>
+        <div class="cross-card">
+          <div class="panel-title">
+            <div class="panel-title-left">🖥️ Back-end ofuscado (server.lua)</div>
+            <span class="pill pill-blue" style="font-size:9px;">🔒 OBF</span>
+          </div>
+          <div class="keys" style="padding:6px 10px; margin-bottom:0;">
+            <span>🗝️</span>
+            <span class="key-lbl">XOR</span>
+            <input class="key-inp" type="number" id="rv-xor" value="42">
+            <span class="key-lbl">Shift</span>
+            <input class="key-inp" type="number" id="rv-shift" value="2">
+          </div>
+          <textarea id="rv-back" placeholder="Cole o server.lua ofuscado aqui..."></textarea>
+        </div>
+      </div>
+
+      <div class="btns" style="margin-top:10px;">
+        <button class="btn btn-purple" onclick="analisarReverso()">⚡ Analisar reverso</button>
+        <button class="btn btn-blue"   onclick="deobfBack()">🔓 Deofuscar back</button>
+        <button class="btn btn-green"  onclick="cp('rv-relatorio')">📋 Copiar relatório</button>
+        <button class="btn"            onclick="dl('rv-relatorio','analise_reversa.txt')">💾 Baixar</button>
+      </div>
+
+      <div class="panel" style="margin-top:10px;">
+        <div class="panel-title"><div class="panel-title-left">📊 Resultado reverso</div></div>
+        <div class="stabs" id="rv-stabs">
+          <button class="stab active" onclick="goStab3('rv-rel',this)">📋 Relatório</button>
+          <button class="stab"        onclick="goStab3('rv-ev',this)">📡 Eventos</button>
+          <button class="stab"        onclick="goStab3('rv-deobf',this)">🔓 Back deofuscado</button>
+        </div>
+        <div id="rv-rel">
+          <textarea id="rv-relatorio" readonly style="height:170px;" placeholder="Analise primeiro..."></textarea>
+        </div>
+        <div id="rv-ev" style="display:none;">
+          <div class="result-list" id="rv-ev-lista">
+            <div class="empty-state">⏳ Analise primeiro</div>
+          </div>
+        </div>
+        <div id="rv-deobf" style="display:none;">
+          <textarea id="rv-deobf-out" readonly style="height:170px;" placeholder="Deofuscação não tentada ainda..."></textarea>
+        </div>
+      </div>
+    </div><!-- /cr-reverso -->
+
+  </div><!-- /tab-cruzar -->
+
+
+  <!-- ═══════════════════════════════════════════════════
+       ABA: BRUTE FORCE
+  ═══════════════════════════════════════════════════ -->
+  <div id="tab-brute" class="tab-panel" style="display:none;">
+
+    <div class="panel">
+      <div class="note note-amber">
+        <span class="note-icon">⚠️</span>
+        <span class="note-text">Testa automaticamente todas as combinações de XOR e Shift. Você precisa saber qualquer <b>palavra ou evento</b> que deve aparecer no código original.</span>
+      </div>
+
+      <div class="guide-steps" style="margin-bottom:14px;">
+        <div class="step"><div class="step-num">1</div><div class="step-text">Cole o <b>código ofuscado</b> no campo abaixo</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Digite um <b>texto esperado</b> — ex: <code>TriggerServerEvent</code> ou nome de evento</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Clique em <b>🔍 Iniciar busca</b> — chaves salvas automaticamente ao encontrar</div></div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <div class="section-label">📥 Código ofuscado</div>
+          <textarea id="bf-in" placeholder="Cole o código ofuscado aqui..." style="height:130px;"></textarea>
+        </div>
+        <div>
+          <div class="section-label">🔍 Texto esperado (um por linha)</div>
+          <textarea id="bf-hint" placeholder="Ex:&#10;TriggerServerEvent&#10;meu_evento&#10;RegisterNetEvent" style="height:130px;"></textarea>
+        </div>
+      </div>
+
+      <div class="keys" style="margin-top:10px;">
+        <span>🎯</span>
+        <span class="key-lbl">XOR de</span>
+        <input class="key-inp" type="number" id="bfx1" value="1"   min="1" max="255">
+        <span class="key-lbl">até</span>
+        <input class="key-inp" type="number" id="bfx2" value="255" min="1" max="255">
+        <span class="key-lbl">Shift de</span>
+        <input class="key-inp" type="number" id="bfs1" value="1"   min="1" max="20">
+        <span class="key-lbl">até</span>
+        <input class="key-inp" type="number" id="bfs2" value="20"  min="1" max="20">
+      </div>
+
+      <div class="btns">
+        <button class="btn btn-blue" id="bf-start" onclick="startBF()">🔍 Iniciar busca</button>
+        <button class="btn btn-red"  id="bf-stop"  onclick="stopBF()" style="display:none;">⏹️ Parar</button>
+      </div>
+
+      <div class="prog-wrap">
+        <div class="prog-bar"><div class="prog-fill" id="bf-prog"></div></div>
+        <div class="prog-info">
+          <span id="bf-info">⏳ Aguardando...</span>
+          <span id="bf-pct">0%</span>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top:8px;">📋 Log de tentativas</div>
+      <div class="bf-log" id="bf-log">Aguardando início...</div>
+    </div>
+
+    <!-- Resultado -->
+    <div class="panel" id="bf-res" style="display:none;">
+      <div class="panel-title">
+        <div class="panel-title-left">✅ Melhor resultado encontrado</div>
+        <span id="bf-best-keys" style="color:var(--grn);font-size:11px;text-transform:none;letter-spacing:0;font-weight:600;"></span>
+      </div>
+      <textarea id="bf-out" readonly style="height:130px;"></textarea>
+      <div class="btns">
+        <button class="btn btn-green"  onclick="cp('bf-out')">📋 Copiar</button>
+        <button class="btn"            onclick="dl('bf-out','brute_resultado.lua')">💾 Baixar .lua</button>
+        <button class="btn btn-blue"   onclick="usarChavesBF()">🔓 Usar chaves na aba Deofuscar</button>
+      </div>
+    </div>
+
+  </div><!-- /tab-brute -->
+
+
+  <!-- ═══════════════════════════════════════════════════
+       ABA: BRUTE FORCE
+  ═══════════════════════════════════════════════════ -->
+  <div id="tab-ajuda" class="tab-panel" style="display:none;">
+
+    <div class="panel">
+      <div class="panel-title"><div class="panel-title-left">📖 O que cada aba faz</div></div>
+      <div style="display:grid;gap:8px;">
+        <div class="result-item ok">
+          <span class="ri-icon" style="font-size:20px;">🔒</span>
+          <div>
+            <div class="ri-name" style="font-size:13px;">Ofuscar</div>
+            <div style="font-size:11px;color:var(--tx2);margin-top:3px;white-space:normal;">Transforma código Lua num formato ilegível com até 5 camadas de proteção (XOR, Shift, Base64, Reverse, pcall). Use antes de distribuir seu script FiveM.</div>
+          </div>
+        </div>
+        <div class="result-item ok">
+          <span class="ri-icon" style="font-size:20px;">🔓</span>
+          <div>
+            <div class="ri-name" style="font-size:13px;">Deofuscar</div>
+            <div style="font-size:11px;color:var(--tx2);margin-top:3px;white-space:normal;">Recupera o código original a partir de um código ofuscado por este programa. Requer as mesmas chaves XOR e Shift usadas na ofuscação.</div>
+          </div>
+        </div>
+        <div class="result-item warn">
+          <span class="ri-icon" style="font-size:20px;">⚡</span>
+          <div>
+            <div class="ri-name" style="font-size:13px;">Cruzar</div>
+            <div style="font-size:11px;color:var(--tx2);margin-top:3px;white-space:normal;">Analisa dois arquivos juntos e encontra eventos em comum, mesmo que um esteja ofuscado. Modo normal (back aberto) e reverso (front aberto).</div>
+          </div>
+        </div>
+        <div class="result-item info">
+          <span class="ri-icon" style="font-size:20px;">🔑</span>
+          <div>
+            <div class="ri-name" style="font-size:13px;">Brute Force</div>
+            <div style="font-size:11px;color:var(--tx2);margin-top:3px;white-space:normal;">Testa até 5.100 combinações de chaves para descobrir a que foi usada. Funciona quando você sabe pelo menos uma palavra do código original.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><div class="panel-title-left">🗝️ O que são XOR e Shift?</div></div>
+      <div style="font-size:12px;color:var(--tx2);line-height:2;">
+        São os segredos da ofuscação.<br>
+        <b style="color:var(--tx1);">XOR (1–255)</b> — embaralha cada byte com operação XOR bitwise.<br>
+        <b style="color:var(--tx1);">Shift (1–20)</b> — desloca cada caractere N posições no código ASCII.<br>
+        <b style="color:var(--tx1);">Pipeline:</b> código → Base64 → Reverse → Shift → XOR → array de bytes.<br>
+        <span style="color:var(--amb);">⚠️ Guarde sempre as chaves. Sem elas, só Brute Force pode recuperar.</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><div class="panel-title-left">🎮 Passo a passo FiveM</div></div>
+      <div class="guide-steps">
+        <div class="step"><div class="step-num">1</div><div class="step-text">Abra <b>🔒 Ofuscar</b>, cole seu <code>client.lua</code> e clique em Ofuscar</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Anote as chaves XOR e Shift exibidas — necessárias para deofuscar depois</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Baixe o <code>.lua</code> protegido e substitua o original na pasta de resource</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text">Para analisar scripts alheios com back aberto + front ofuscado: use <b>⚡ Cruzar</b></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-text">Se não souber as chaves: use <b>🔑 Brute Force</b> com um evento que você sabe que existe</div></div>
+      </div>
+    </div>
+
+    <div class="note note-green" style="margin:0;">
+      <span class="note-icon">🔒</span>
+      <span class="note-text">Tudo roda localmente no seu navegador. Nenhum código é enviado para servidores externos. Código-fonte aberto e auditável.</span>
+    </div>
+
+  </div><!-- /tab-ajuda -->
+
+</div><!-- /wrap -->
+
+<!-- Toast container -->
+<div class="toast-box" id="toast-box"></div>
+
+
+<script src="script.js"></script>
+</body>
+</html>
